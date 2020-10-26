@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# video2d-2x is a command line tool for upscaling videos using waifu2x.
+# Copyright (C) 2020 GenZmeY
+# mailto: genzmey@gmail.com
+# 
+# This file is part of video2d-2x.
+#
+# video2d-2x is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+readonly ScriptName=$(basename "$0")
+readonly ScriptVersion="0.1"
+readonly BaseDir=$(dirname $(readlink -e "$0"))
+
+readonly DepsDir="$BaseDir/dependencies"
+readonly ScriptsDir="$BaseDir/scripts"
+readonly SettingsDir="$BaseDir/settings"
+readonly OutputDir="$BaseDir/output"
+
+readonly FramesDir="$OutputDir/frames"
+readonly AudioDir="$OutputDir/audio"
+readonly VideoDir="$OutputDir/video"
+readonly SubtitlesDir="$OutputDir/subtitles"
+readonly ChaptersDir="$OutputDir/chapters"
+readonly AttachmentsDir="$OutputDir/attachments"
+readonly ReleaseDir="$OutputDir/release"
+
+readonly FramesUpscaledDir="${FramesDir}_upscaled"
+readonly VideoUpscaledDir="${VideoDir}_upscaled"
+
+readonly FormatJson="$OutputDir/format.json"
+readonly StreamsJson="$OutputDir/streams.json"
+readonly ChaptersJson="$OutputDir/chapters.json"
+
+readonly RangesList="$OutputDir/ranges.list"
+
+readonly Video2d2xConf="$SettingsDir/video2d-2x.conf"
+readonly Waifu2xConf="$SettingsDir/waifu2x-caffe.conf"
+readonly FfmpegConf="$SettingsDir/ffmpeg.conf"
+
+source "$ScriptsDir/returncodes.lib"
+source "$ScriptsDir/common.lib"
+
+source "$Video2d2xConf"
+
+function show_version ()
+{
+	echo "$ScriptName v$ScriptVersion"
+}
+
+function show_help ()
+{
+	echo "$ScriptName - command line tool for upscaling videos using waifu2x"
+	echo "    -e, --extract <FILE>  extract all resources from (video) FILE"
+	echo "    -f, --frames          convert extracted video to frames"
+	echo "    -r, --ranges          generate range list for frames"
+	echo "    -u, --upscale         upscale frames with range settings"
+	echo "    -v, --video           generate upscaled video from upscaled frames"
+	echo "    -m, --merge           merge upscaled video with all extracted resources"
+	echo "    -V, --version         show version"
+	echo "    -h, --help            show help"
+}
+
+if [[ -n "$Waifu2xCaffeDir" ]]; then
+	PATH="$PATH:$(readlink -e $Waifu2xCaffeDir)"
+fi
+if [[ -n "$MkvToolNixDir" ]]; then
+	PATH="$PATH:$(readlink -e $MkvToolNixDir)"
+fi
+if [[ -n "$FfmpegDir" ]]; then
+	PATH="$PATH:$(readlink -e $FfmpegDir)"
+fi
+
+if [[ $# -eq 0 ]]; then show_help; exit 0; fi
+case $1 in
+	  -h|--help    ) show_help                                ;;
+	  -V|--version ) show_version                             ;;
+	  -e|--extract ) shift; source "$ScriptsDir/extract.sh"   ;;
+	  -f|--frames  ) shift; source "$ScriptsDir/frames.sh"    ;;
+	  -r|--ranges  ) shift; source "$ScriptsDir/ranges.sh"    ;;
+	  -u|--upscale ) shift; source "$ScriptsDir/upscale.sh"   ;;
+	  -v|--video   ) shift; source "$ScriptsDir/video.sh"     ;;
+	  -m|--merge   ) shift; source "$ScriptsDir/merge.sh"     ;;
+	  -t|--test    ) shift; source "$ScriptsDir/test.sh"      ;;
+	    *          ) echo "Command not recognized: $1" ; exit "$OPTION_ERROR";;
+esac
+
+exit "$SUCCESS"
