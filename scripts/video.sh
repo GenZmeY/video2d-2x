@@ -54,10 +54,7 @@ source "$FfmpegConf"
 
 rm -rf "$VideoUpscaledDir"; mkdir -p "$VideoUpscaledDir"
 
-# videoname?
-#VideoName=$(find "$VideoDir" -type f -printf "%f\n" | head -n 1)
-VideoName="0.h265"
-VideoUpscaled="$VideoUpscaledDir/$VideoName"
+VideoUpscaled="$VideoUpscaledDir/video.mp4"
 
 ffmpeg \
 	-hide_banner \

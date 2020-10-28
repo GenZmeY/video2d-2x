@@ -15,9 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+DEF='\e[0m'; BLD='\e[1m'; RED='\e[31m'; GRN='\e[32m'; YLW='\e[33m'; WHT='\e[97m'
+
 function clean_line () # $1: Fill size
 { 
-	printf "\r% $1s\r" ""
+	printf "\r%$1s\r" ""
 }
 
 function framerate ()
@@ -28,10 +30,7 @@ function framerate ()
 	do
 		if [[ $(jq -r ".streams[$Index].codec_type" "$StreamsJson") == "video" ]]; then
 			jq -r ".streams[$Index].r_frame_rate" "$StreamsJson"
-			return 0
+			break
 		fi
 	done
-	
-	echo "ERR: No framerate info in $StreamsJson"
-	exit "$NO_INFO_ERROR"
 }

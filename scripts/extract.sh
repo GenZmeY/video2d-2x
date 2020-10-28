@@ -17,23 +17,19 @@
 
 function extension_by_codec () # $1: Codec
 {
-	# Where is my json?!
-	local Result=$(
-		ffprobe -v quiet -h muxer="$1" | \
-		grep 'Common extensions:'      | \
-		sed -r 's|^.+: ([^,\.]+).+|\1|')
-	if [[ -z "$Result" ]]; then
-		Result=$(
-		ffprobe -v quiet -h demuxer="$1" | \
-		grep 'Common extensions:'      | \
-		sed -r 's|^.+: ([^,\.]+).+|\1|')
-	fi
-	if [[ -n "$Result" ]]; then
-		echo "$Result"
-	else
-		echo "No extension for codec \"$1\""
-		exit "$NO_EXTENSION_FOR_CODEC"
-	fi
+	local Ext=""
+	for Mux in muxer demuxer
+	do
+		# Where is my json?!
+		Ext=$(
+			ffprobe -v quiet -h $Mux="$1" | \
+			grep 'Common extensions:'      | \
+			sed -r 's|^.+: ([^,\.]+).+|\1|')
+		if [[ -n "$Ext" ]]; then
+			echo "$Ext"
+			break
+		fi
+	done
 }
 
 function extract_attachments ()
@@ -85,6 +81,11 @@ do
 	Type=$(jq -r ".streams[$Index].codec_type" "$StreamsJson")
 	Codec=$(jq -r ".streams[$Index].codec_name" "$StreamsJson")
 	Extension=$(extension_by_codec "$Codec")
+	
+	if [[ -z "$Extension" ]]; then
+		echo "No extension for codec \"$Codec\""
+		exit "$NO_EXTENSION_FOR_CODEC"
+	fi
 	
 	case "$Type" in
 		video )

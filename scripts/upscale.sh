@@ -16,15 +16,21 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 readonly TmpFramesDir="${FramesDir}_tmp"
+readonly ColumnWidth=8
+readonly RowTemplate="\r%-${ColumnWidth}s%-${ColumnWidth}s%-${ColumnWidth}s%-${ColumnWidth}s\n"
 
 function create_default_conf ()
 {
 	echo "\
-ScaleRatio=\"3\"
-OutputDepth=\"16\"
-Mode=\"noise_scale\"
-CropSize=\"256\"
-Model=\"upresnet10\"
+Process=\"cudnn\"\
+GpuNum=\"0\"\
+ScaleRatio=\"3\"\
+OutputDepth=\"16\"\
+Mode=\"noise_scale\"\
+CropSize=\"256\"\
+BatchSize=\"1\"\
+Model=\"upresnet10\"\
+TtaMode=\"0\"\
 " > "$Waifu2xConf"
 }
 
@@ -135,7 +141,7 @@ function progress_bar ()
 		LastUpscaledFrame=$(ls "$FramesUpscaledDir" | sort | tail -n 1)
 		if [[ "$PreviousUpscaledFrame" != "$LastUpscaledFrame" ]]; then
 			local Done=$(to_int $LastUpscaledFrame)
-			echo -ne "\r[$(printf "% 3d" $(($Done*100/$Total)))%] $Done/$Total"
+			printf "\r[%3d%%] %d/%d" "$(($Done*100/$Total))" "$Done" "$Total"
 			PreviousUpscaledFrame="$LastUpscaledFrame"
 		fi
 		sleep 1
@@ -169,23 +175,29 @@ if [[ "$LastUpscaledFrame" == "$LastOriginalFrame" ]]; then
 fi
 
 LastUpscaledFrame=$(to_int "$LastUpscaledFrame")
-
+echo "$WIDTH"
+printf "${BLD}$RowTemplate${DEF}" "START" "END" "NOISE" "ACTION"
 while read Line
 do
+	if [[ -z "$Line" ]]; then
+		continue
+	fi
+	
 	set_range $Line
-	clean_line 32
+	clean_line "$COLUMNS"
 	if [[ -n "$LastUpscaledFrame" ]] && [[ "$LastUpscaledFrame" -ge "$EndFrame" ]]; then
-		echo -e "\r$StartFrame - $EndFrame [$NoiseLevel] - SKIP"
+		printf "$RowTemplate" "$StartFrame" "$EndFrame" "$NoiseLevel" "SKIP"
 		continue
 	fi
 	
 	if [[ -n "$LastUpscaledFrame" ]] && [[ "$StartFrame" -lt "$LastUpscaledFrame" ]]; then
-		echo -e "\r$StartFrame ($LastUpscaledFrame) - $EndFrame [$NoiseLevel] - CONTINUE"
+		printf "$RowTemplate" "$StartFrame"        "$(($LastUpscaledFrame-1))" "$NoiseLevel" "SKIP"
+		printf "$RowTemplate" "$LastUpscaledFrame" "$EndFrame"          "$NoiseLevel" "CONTINUE"
 		# if waifu2x-caffe was interrupted while saving the file, a corrupted file is saved 
 		# so it's better to start by overwriting the last upscaled file
 		StartFrame="$LastUpscaledFrame"
 	else
-		echo -e "\r$StartFrame - $EndFrame [$NoiseLevel]"
+		printf "$RowTemplate" "$StartFrame" "$EndFrame" "$NoiseLevel"
 	fi
 	
 	rm -rf "$TmpFramesDir"
@@ -202,7 +214,7 @@ do
 	cp $CopyList "$TmpFramesDir"
 	popd > /dev/null
 	
-	clean_line 32
+	clean_line "$COLUMNS"
 	
 	(progress_bar) &
 	ProgressBarPID=$!
