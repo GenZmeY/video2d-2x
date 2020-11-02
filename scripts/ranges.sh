@@ -28,9 +28,6 @@ function add_range () # $1: Start frame, $2: End frame, $3: Noise level
 	echo -e "$1\t$2\t$3" >> "$RangesList"
 }
 
-StartFrame=$(ls "$FramesDir" | sort | head -n 1 | sed 's|.png$||')
-EndFrame=$(ls "$FramesDir" | sort | tail -n 1 | sed 's|.png$||')
-NoiseLevel="1"
+source "$RangeGenConf"
 
-:> "$RangesList"
-add_range "$StartFrame" "$EndFrame" "$NoiseLevel"
+"$DepsDir/range-gen/range-gen.exe" -j "$Jobs" -n "$NoiseLevel" "$FramesDir" "$RangesList" "$Threshold"
