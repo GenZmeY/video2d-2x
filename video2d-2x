@@ -42,6 +42,7 @@ readonly VideoUpscaledDir="${VideoDir}_upscaled"
 readonly FormatJson="$OutputDir/format.json"
 readonly StreamsJson="$OutputDir/streams.json"
 readonly ChaptersJson="$OutputDir/chapters.json"
+readonly FrameDurationList="$OutputDir/frameduration.list"
 
 readonly RangesList="$OutputDir/ranges.list"
 

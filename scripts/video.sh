@@ -56,12 +56,20 @@ rm -rf "$VideoUpscaledDir"; mkdir -p "$VideoUpscaledDir"
 
 VideoUpscaled="$VideoUpscaledDir/video.mp4"
 
+#	-f "image2" \
+#	-framerate "$(framerate)" \
+#	-i "$FramesUpscaledDir/%06d.png" \
+#	-r "$(framerate)" \	 
+# -vf fps="$(framerate)" \
+#
+
 ffmpeg \
 	-hide_banner \
-	-f "image2" \
-	-framerate "$(framerate)" \
-	-i "$FramesUpscaledDir/%06d.png" \
-	-r "$(framerate)" \
+	-f "concat" \
+	-safe 0 \
+	-i "$FrameDurationList" \
+	-vsync vfr \
+	-r "42" \
 	-vcodec "$VideoCodec" \
 	-preset "$Preset"  \
 	-pix_fmt "$PixelFormat" \

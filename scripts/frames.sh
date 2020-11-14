@@ -23,8 +23,8 @@ if ! [[ -r "$InputFile" ]]; then
 fi
 
 rm -rf "$FramesDir"; mkdir -p "$FramesDir"
-	
-ffmpeg -hide_banner -i "$InputFile" -r "$(framerate)" -f image2 "$FramesDir/%06d.png"
+# passthrough
+ffmpeg -hide_banner -i "$InputFile" -r "$(framerate)" -f image2 -vsync vfr "$FramesDir/%06d.png"
 
 if [[ "$?" != 0 ]]; then
 	exit "$CONVERT_TO_FRAMES_ERROR"

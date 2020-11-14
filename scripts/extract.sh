@@ -52,6 +52,22 @@ function extract_chapters ()
 	echo "DUMMY"
 }
 
+function extract_framedurations () # $1: stream index
+{
+	local FileIndex=0
+	echo "ffconcat version 1.0" > "$FrameDurationList"
+	while read Line
+	do
+		if echo "$Line" | grep -qF 'pts_time='; then
+			((FileIndex++))
+			printf "file \'./$(basename $FramesUpscaledDir)/%06d.png\'\n" "$FileIndex" >> "$FrameDurationList"
+			echo "inpoint $(echo "$Line" | grep -Po '\d+\.\d+')" >> "$FrameDurationList"
+		elif echo "$Line" | grep -qF 'duration_time='; then
+			echo "duration $(echo "$Line" | grep -Po '\d+\.\d+')" >> "$FrameDurationList"
+		fi
+	done < <(ffprobe -v quiet -show_entries packet=pts_time,duration_time -select_streams "$Index" "$InputFile")
+}
+
 if [[ -z "$1" ]]; then
 	echo "You must specify the video file"
 	exit "$PARAMETER_ERROR"
@@ -89,6 +105,7 @@ do
 	
 	case "$Type" in
 		video )
+			extract_framedurations "$Index"
 			ffmpeg -hide_banner -i "$InputFile" -map "0:$Index" -c:v copy "$VideoDir/$Index.$Extension"
 			if [[ "$?" != 0 ]]; then exit "$EXTRACT_AUDIO_ERROR"; fi ;;
 		audio )
