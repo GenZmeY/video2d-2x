@@ -18,7 +18,7 @@ duration 0.042000
 ...
 ```
 
-I should note that in the case of VFR there is more than just frame time. There are two parameters: pts and dts  
+I should note that in the case of VFR there is more than just frame time. There are two parameters: pts and dts (and they may not match).    
 * pts is the presentation time stamp, that is, how the frames should be displayed.  
 * dts is a decoding time stamp, that is, in what order the frames should be decoded.  
 And apparently the frames are stored in dts order, which complicates things for me.  
