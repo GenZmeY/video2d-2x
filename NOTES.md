@@ -40,5 +40,5 @@ ffmpeg \
 	"$VideoUpscaled"
 ```
 
-This is the closest thing I could do (this option gives VFR video at the output, all other attempts continued to create CFR) but this is still a wrong option, since if you decompose it into frames again, you can see that their duration does not match the original video.
+This is the closest thing I could do (this option gives VFR video at the output, all other attempts continued to create CFR) but this is still a wrong option, since if you decompose it into frames again, you can see that their duration does not match the original video.  
 In addition, the -r parameter is specified here. In this case, it sets the maximum FPS (not average). I don't understand why it is needed, because all the information about the frame time is already exists in the concat file (!), but if you do not specify it, ffmpeg sets it to 25fps and this is definitely not what I need
