@@ -17,15 +17,6 @@
 
 InputFile=$(find "$VideoDir" -mindepth 1 -maxdepth 1 -type f | head -n 1)
 
-if ! [[ -r "$InputFile" ]]; then
-	echo "Read file error: \"$InputFile\""
-	exit "$FILE_READ_ERROR"
-fi
-
 rm -rf "$FramesDir"; mkdir -p "$FramesDir"
 	
 ffmpeg -hide_banner -i "$InputFile" -r "$(framerate)" -f image2 "$FramesDir/%06d.png"
-
-if [[ "$?" != 0 ]]; then
-	exit "$CONVERT_TO_FRAMES_ERROR"
-fi

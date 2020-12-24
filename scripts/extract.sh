@@ -36,12 +36,13 @@ function extract_attachments ()
 {
 	pushd "$AttachmentsDir"
 	
-	ffmpeg -hide_banner -dump_attachment:t "" -i "$InputFile"
-	
-	# There is no error checking,
+	# Disable error checking
 	# because ffmpeg always throws an error:
 	# "At least one output file must be specified",
 	# although it successfully saves attachments.
+	set +e
+	ffmpeg -hide_banner -dump_attachment:t "" -i "$InputFile"
+	set -e
 	
 	popd
 }

@@ -15,18 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-# TODO: auto-detect ranges
-# compare adjacent frames using the duplicate image search algorithm
-# frames that are unlike each other will be the boundaries of the ranges
-
 # Range list format:
 # START_FRAME END_FRAME NOISE_LEVEL
 # (separate line for each range)
-
-function add_range () # $1: Start frame, $2: End frame, $3: Noise level
-{
-	echo -e "$1\t$2\t$3" >> "$RangesList"
-}
+# (NOISE_LEVEL is optional)
 
 source "$RangeGenConf"
 

@@ -41,7 +41,6 @@ function auto_bitrate ()
 	elif [[ -n "$VideoBitrate" ]]; then
 		echo '-b:v' "$VideoBitrate"
 	else
-		echo "You must set ConstantRateFactor or VideoBitrate in ffmpeg.conf"
 		exit "$SETTINGS_ERROR"
 	fi
 }

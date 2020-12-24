@@ -15,53 +15,38 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+source "$Waifu2xConf"
+
 readonly TmpFramesDir="${FramesDir}_tmp"
-readonly ColumnWidth=8
-readonly RowTemplate="\r%-${ColumnWidth}s%-${ColumnWidth}s%-${ColumnWidth}s%-${ColumnWidth}s\n"
+readonly RowTemplate="\r%-8s%-8s%-12s%-8s%-8s\n"
 
-function create_default_conf ()
+function upscale_mode () # $1: ScaleRatio, $2: NoiseLevel
 {
-	echo "\
-Process=\"cudnn\"\
-GpuNum=\"0\"\
-ScaleRatio=\"3\"\
-OutputDepth=\"16\"\
-Mode=\"noise_scale\"\
-CropSize=\"256\"\
-BatchSize=\"1\"\
-Model=\"upresnet10\"\
-TtaMode=\"0\"\
-" > "$Waifu2xConf"
-}
-
-function to_int () # $1: String
-{
-	echo "$1" | \
-	sed 's|.png||' | \
-	sed -r 's|0*([1-9][0-9]*)|\1|'
-}
-
-function set_range () # $@: Line
-{
-	StartFrame=$(to_int "$1")
-	EndFrame=$(to_int "$2")
-	NoiseLevel=$(to_int "$3")
+	local ScaleRatio="$1"
+	local NoiseLevel="$2"
 	
-	return $#
-}
-
-function model_path () # $1: model name
-{
-	echo "$(dirname $(readlink -e $(which waifu2x-caffe-cui)))/models/$1"
+	if [[ "$ScaleRatio" -ne 1 ]] && [[ -n "$NoiseLevel" ]]; then
+		echo "noise_scale"
+		return 0
+	fi
+	if [[ "$ScaleRatio" -eq 1 ]] && [[ -n "$NoiseLevel" ]]; then
+		echo "noise"
+		return 0
+	fi
+	if [[ "$ScaleRatio" -ne 1 ]] && [[ -z "$NoiseLevel" ]]; then
+		echo "scale"
+		return 0
+	fi
+	return 1
 }
 
 function upscale_images () # $1: InputDir, $2: OutputDir, $3: ProgressBarPID, $4: ParentPID
 {
 	waifu2x-caffe-cui \
+		--mode "$UpscaleMode" \
 		--scale_ratio "$ScaleRatio" \
 		--output_depth "$OutputDepth" \
 		--noise_level "$NoiseLevel" \
-		--mode "$Mode" \
 		--tta "$TtaMode" \
 		--gpu "$GpuNum" \
 		--process "$Process" \
@@ -78,69 +63,16 @@ function upscale_images () # $1: InputDir, $2: OutputDir, $3: ProgressBarPID, $4
 	fi
 }
 
-function check_ranges ()
-{
-	local Errors=0
-	local ParamCount=0
-	local LineIndex=0
-	local LastEndFrame=""
-	
-	while read Line
-	do
-		((LineIndex++))
-		set_range $Line
-		ParamCount=$?
-		if [[ "$ParamCount" -eq 0 ]]; then
-			continue
-		fi
-		if [[ "$ParamCount" -eq 3 ]]; then
-			if [[ "$StartFrame" =~ ^[0-9]+$ ]]; then
-				if [[ -n "$LastEndFrame" ]] && [[ $(($LastEndFrame+1)) != $StartFrame ]]; then
-					echo "ERR [$LineIndex]: StartFrame ($StartFrame) doesn't follow the previous one ($LastEndFrame)"
-					((Errors++))
-				fi
-			else
-				echo "ERR [$LineIndex]: StartFrame $StartFrame is not valid integer"
-				((Errors++))
-			fi
-				
-			if [[ "$EndFrame" =~ ^[0-9]+$ ]]; then
-				LastEndFrame="$EndFrame"
-			else
-				LastEndFrame=""
-				echo "ERR [$LineIndex]: EndFrame $EndFrame is not valid integer"
-				((Errors++))
-			fi
-			if [[ "$NoiseLevel" =~ ^[0-9]+$ ]]; then
-				if [[ "$NoiseLevel" -lt 0 ]] || [[ "$NoiseLevel" -gt 3 ]]; then
-					echo "ERR [$LineIndex]: NoiseLevel $NoiseLevel incorrect value (should be in the range 0-3)"
-					((Errors++))
-				fi
-			else
-				echo "ERR [$LineIndex]: NoiseLevel $NoiseLevel is not valid integer"
-				((Errors++))
-			fi
-		else
-			echo "ERR [$LineIndex]: $ParamCount parameters received (3 expected)"
-			((Errors++))
-		fi
-	done < <(cat "$RangesList"; echo) # make bash not skip the last line (if there is no empty line at the end)
-	if [[ "$Errors" -gt 0 ]]; then
-		echo "Ranges list syntax: $Errors errors"
-	fi
-	return "$Errors"
-}
-
 function progress_bar ()
 {
 	local PreviousUpscaledFrame=""
 	local LastUpscaledFrame=""
-	local Total=$(to_int $LastOriginalFrame)
+	local Total=$(png_num $LastOriginalFrame)
 	while [[ "$LastUpscaledFrame" != "$LastOriginalFrame" ]]
 	do
 		LastUpscaledFrame=$(ls "$FramesUpscaledDir" | sort | tail -n 1)
 		if [[ "$PreviousUpscaledFrame" != "$LastUpscaledFrame" ]]; then
-			local Done=$(to_int $LastUpscaledFrame)
+			local Done=$(png_num $LastUpscaledFrame)
 			printf "\r[%3d%%] %d/%d" "$(($Done*100/$Total))" "$Done" "$Total"
 			PreviousUpscaledFrame="$LastUpscaledFrame"
 		fi
@@ -148,11 +80,10 @@ function progress_bar ()
 	done
 }
 
-if ! [[ -e "$Waifu2xConf" ]]; then
-	create_default_conf
+if ! [[ -r "$RangesList" ]]; then
+	echo "Read file error: \"$RangesList\""
+	exit "$FILE_READ_ERROR"
 fi
-
-source "$Waifu2xConf"
 
 if ! check_ranges; then
 	exit "$RANGES_LIST_SYNTAX_ERROR"
@@ -160,11 +91,6 @@ fi
 
 rm -rf "$TmpFramesDir"
 mkdir -p "$FramesUpscaledDir"
-
-if ! [[ -r "$RangesList" ]]; then
-	echo "Read file error: \"$RangesList\""
-	exit "$FILE_READ_ERROR"
-fi
 
 LastOriginalFrame=$(ls "$FramesDir" | sort | tail -n 1)
 LastUpscaledFrame=$(ls "$FramesUpscaledDir" | sort | tail -n 1)
@@ -174,30 +100,43 @@ if [[ "$LastUpscaledFrame" == "$LastOriginalFrame" ]]; then
 	exit "$SUCCESS"
 fi
 
-LastUpscaledFrame=$(to_int "$LastUpscaledFrame")
-echo "$WIDTH"
-printf "${BLD}$RowTemplate${DEF}" "START" "END" "NOISE" "ACTION"
+LastUpscaledFrame=$(png_num "$LastUpscaledFrame")
+
+printf "${BLD}$RowTemplate${DEF}" "START" "END" "MODE" "NOISE" "ACTION"
 while read Line
 do
 	if [[ -z "$Line" ]]; then
 		continue
 	fi
 	
-	set_range $Line
-	clean_line "$COLUMNS"
+	RangeInfo=($Line)
+	StartFrame=$(png_num ${RangeInfo[0]})
+	EndFrame=$(png_num ${RangeInfo[1]})
+	NoiseLevel=$(png_num ${RangeInfo[2]})
+
+	UpscaleMode=$(upscale_mode "$ScaleRatio" "$NoiseLevel")
+	
+	if [[ -z "$NoiseLevel" ]]; then
+		NoiseLevel="0"
+		NoiseLevelDisplay="-"
+	else
+		NoiseLevelDisplay="$NoiseLevel"
+	fi
+	
+	clean_line
 	if [[ -n "$LastUpscaledFrame" ]] && [[ "$LastUpscaledFrame" -ge "$EndFrame" ]]; then
-		printf "$RowTemplate" "$StartFrame" "$EndFrame" "$NoiseLevel" "SKIP"
+		printf "$RowTemplate" "$StartFrame" "$EndFrame" "$UpscaleMode" "$NoiseLevelDisplay" "SKIP"
 		continue
 	fi
 	
 	if [[ -n "$LastUpscaledFrame" ]] && [[ "$StartFrame" -lt "$LastUpscaledFrame" ]]; then
-		printf "$RowTemplate" "$StartFrame"        "$(($LastUpscaledFrame-1))" "$NoiseLevel" "SKIP"
-		printf "$RowTemplate" "$LastUpscaledFrame" "$EndFrame"          "$NoiseLevel" "CONTINUE"
+		printf "$RowTemplate" "$StartFrame"        "$(($LastUpscaledFrame-1))" "$UpscaleMode" "$NoiseLevelDisplay" "SKIP"
+		printf "$RowTemplate" "$LastUpscaledFrame" "$EndFrame"                 "$UpscaleMode" "$NoiseLevelDisplay" "CONTINUE"
 		# if waifu2x-caffe was interrupted while saving the file, a corrupted file is saved 
 		# so it's better to start by overwriting the last upscaled file
 		StartFrame="$LastUpscaledFrame"
 	else
-		printf "$RowTemplate" "$StartFrame" "$EndFrame" "$NoiseLevel"
+		printf "$RowTemplate" "$StartFrame" "$EndFrame" "$UpscaleMode" "$NoiseLevelDisplay"
 	fi
 	
 	rm -rf "$TmpFramesDir"
@@ -214,7 +153,7 @@ do
 	cp $CopyList "$TmpFramesDir"
 	popd > /dev/null
 	
-	clean_line "$COLUMNS"
+	clean_line
 	
 	(progress_bar) &
 	ProgressBarPID=$!

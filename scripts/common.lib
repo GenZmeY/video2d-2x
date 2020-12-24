@@ -15,11 +15,64 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-DEF='\e[0m'; BLD='\e[1m'; RED='\e[31m'; GRN='\e[32m'; YLW='\e[33m'; WHT='\e[97m'
+######## Filesystem ########
+readonly DepsDir="$BaseDir/dependencies"
+readonly ScriptsDir="$BaseDir/scripts"
+readonly SettingsDir="$BaseDir/settings"
+readonly OutputDir="$BaseDir/output"
 
-function clean_line () # $1: Fill size
+readonly FramesDir="$OutputDir/frames"
+readonly AudioDir="$OutputDir/audio"
+readonly VideoDir="$OutputDir/video"
+readonly SubtitlesDir="$OutputDir/subtitles"
+readonly ChaptersDir="$OutputDir/chapters"
+readonly AttachmentsDir="$OutputDir/attachments"
+readonly ReleaseDir="$OutputDir/release"
+readonly PreviewDir="$OutputDir/preview"
+
+readonly FramesUpscaledDir="${FramesDir}_upscaled"
+readonly VideoUpscaledDir="${VideoDir}_upscaled"
+
+readonly FormatJson="$OutputDir/format.json"
+readonly StreamsJson="$OutputDir/streams.json"
+readonly ChaptersJson="$OutputDir/chapters.json"
+
+readonly RangesList="$OutputDir/ranges.list"
+
+readonly DepsConf="$SettingsDir/deps.conf"
+readonly Waifu2xConf="$SettingsDir/waifu2x-caffe.conf"
+readonly FfmpegConf="$SettingsDir/ffmpeg.conf"
+readonly RangeGenConf="$SettingsDir/range-gen.conf"
+
+######## Return codes ########
+SUCCESS=0
+OPTION_ERROR=1
+PARAMETER_ERROR=2
+EXTRACT_AUDIO_ERROR=3
+EXTRACT_VIDEO_ERROR=4
+EXTRACT_SUBTITLE_ERROR=5
+EXTRACT_ATTACHMENT_ERROR=6
+UNKNOWN_CODEC_TYPE_ERROR=7
+NO_EXTENSION_FOR_CODEC=8
+CONVERT_TO_FRAMES_ERROR=9
+FILE_READ_ERROR=10
+RANGES_LIST_SYNTAX_ERROR=11
+SETTINGS_ERROR=12
+WAIFU2X_ERROR=13
+MERGE_RELEASE_ERROR=14
+NO_INFO_ERROR=15
+INTERRUPT=16
+CREATE_UPSCALED_VIDEO_ERROR=17
+
+######## Functions ########
+function clean_line ()
 { 
-	printf "\r%$1s\r" ""
+	printf "\r%$(tput cols)s\r" ""
+}
+
+function model_path () # $1: model name
+{
+	echo "$(dirname $(readlink -e $(which waifu2x-caffe-cui)))/models/$1"
 }
 
 function framerate ()
@@ -34,3 +87,87 @@ function framerate ()
 		fi
 	done
 }
+
+function png_num () # $1: String
+{
+	echo "$1" | \
+	sed 's|.png||' | \
+	sed -r 's|0*([1-9][0-9]*)|\1|'
+}
+
+function check_ranges ()
+{
+	local Errors=0
+	local ParamCount=0
+	local LineIndex=0
+	local LastEndFrame=""
+	
+	while read Line
+	do
+		((LineIndex++))
+		local RangeInfo=($Line)
+		local ParamCount=${#RangeInfo[@]}
+		
+		if [[ "$ParamCount" -eq 0 ]]; then
+			continue
+		elif [[ "$ParamCount" -eq 2 ]] || [[ "$ParamCount" -eq 3 ]]; then
+			local StartFrame=$(png_num ${RangeInfo[0]})
+			local EndFrame=$(png_num ${RangeInfo[1]})
+			local NoiseLevel=$(png_num ${RangeInfo[2]})
+		
+			if [[ "$StartFrame" =~ ^[0-9]+$ ]]; then
+				if [[ -n "$LastEndFrame" ]] && [[ $(($LastEndFrame+1)) != $StartFrame ]]; then
+					echo "ERR [$LineIndex]: StartFrame ($StartFrame) doesn't follow the previous one ($LastEndFrame)"
+					((Errors++))
+				fi
+			else
+				echo "ERR [$LineIndex]: StartFrame $StartFrame is not valid integer"
+				((Errors++))
+			fi
+				
+			if [[ "$EndFrame" =~ ^[0-9]+$ ]]; then
+				LastEndFrame="$EndFrame"
+			else
+				LastEndFrame=""
+				echo "ERR [$LineIndex]: EndFrame $EndFrame is not valid integer"
+				((Errors++))
+			fi
+			if [[ "$NoiseLevel" =~ ^[0-9]+$ ]]; then
+				if [[ "$NoiseLevel" -lt 0 ]] || [[ "$NoiseLevel" -gt 3 ]]; then
+					echo "ERR [$LineIndex]: NoiseLevel $NoiseLevel incorrect value (should be in the range 0-3)"
+					((Errors++))
+				fi
+			elif [[ -n "$NoiseLevel" ]]; then
+				echo "ERR [$LineIndex]: NoiseLevel $NoiseLevel is not valid integer"
+				((Errors++))
+			fi
+		else
+			echo "ERR [$LineIndex]: $ParamCount parameters received (2 or 3 expected)"
+			((Errors++))
+		fi
+	done < <(cat "$RangesList"; echo) # make bash not skip the last line (if there is no empty line at the end)
+	if [[ "$Errors" -gt 0 ]]; then
+		echo "Ranges list syntax: $Errors errors"
+	fi
+	return "$Errors"
+}
+
+######## Includes ########
+source "$DepsConf"
+
+######## Initialization ########
+if [[ -n "$Waifu2xCaffeDir" ]]; then
+	PATH="$PATH:$(readlink -e $Waifu2xCaffeDir)"
+fi
+if [[ -n "$MkvToolNixDir" ]]; then
+	PATH="$PATH:$(readlink -e $MkvToolNixDir)"
+fi
+if [[ -n "$FfmpegDir" ]]; then
+	PATH="$PATH:$(readlink -e $FfmpegDir)"
+fi
+
+if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+	DEF='\e[0m'; BLD='\e[1m'; RED='\e[31m'; GRN='\e[32m'; YLW='\e[33m'; WHT='\e[97m'
+else
+	DEF=''; BLD=''; RED=''; GRN=''; YLW=''; WHT=''
+fi

@@ -19,41 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+set -Eeuo pipefail
+
 readonly ScriptName=$(basename "$0")
-readonly ScriptVersion="0.1"
+readonly ScriptVersion="0.2"
 readonly BaseDir=$(dirname $(readlink -e "$0"))
 
-readonly DepsDir="$BaseDir/dependencies"
-readonly ScriptsDir="$BaseDir/scripts"
-readonly SettingsDir="$BaseDir/settings"
-readonly OutputDir="$BaseDir/output"
-
-readonly FramesDir="$OutputDir/frames"
-readonly AudioDir="$OutputDir/audio"
-readonly VideoDir="$OutputDir/video"
-readonly SubtitlesDir="$OutputDir/subtitles"
-readonly ChaptersDir="$OutputDir/chapters"
-readonly AttachmentsDir="$OutputDir/attachments"
-readonly ReleaseDir="$OutputDir/release"
-
-readonly FramesUpscaledDir="${FramesDir}_upscaled"
-readonly VideoUpscaledDir="${VideoDir}_upscaled"
-
-readonly FormatJson="$OutputDir/format.json"
-readonly StreamsJson="$OutputDir/streams.json"
-readonly ChaptersJson="$OutputDir/chapters.json"
-
-readonly RangesList="$OutputDir/ranges.list"
-
-readonly Video2d2xConf="$SettingsDir/video2d-2x.conf"
-readonly Waifu2xConf="$SettingsDir/waifu2x-caffe.conf"
-readonly FfmpegConf="$SettingsDir/ffmpeg.conf"
-readonly RangeGenConf="$SettingsDir/range-gen.conf"
-
-source "$ScriptsDir/returncodes.lib"
-source "$ScriptsDir/common.lib"
-
-source "$Video2d2xConf"
+source "$BaseDir/scripts/common.lib"
 
 function show_version ()
 {
@@ -73,16 +45,6 @@ function show_help ()
 	echo "    -h, --help            show help"
 }
 
-if [[ -n "$Waifu2xCaffeDir" ]]; then
-	PATH="$PATH:$(readlink -e $Waifu2xCaffeDir)"
-fi
-if [[ -n "$MkvToolNixDir" ]]; then
-	PATH="$PATH:$(readlink -e $MkvToolNixDir)"
-fi
-if [[ -n "$FfmpegDir" ]]; then
-	PATH="$PATH:$(readlink -e $FfmpegDir)"
-fi
-
 if [[ $# -eq 0 ]]; then show_help; exit 0; fi
 case $1 in
 	  -h|--help    ) show_help                                ;;
@@ -90,6 +52,7 @@ case $1 in
 	  -e|--extract ) shift; source "$ScriptsDir/extract.sh"   ;;
 	  -f|--frames  ) shift; source "$ScriptsDir/frames.sh"    ;;
 	  -r|--ranges  ) shift; source "$ScriptsDir/ranges.sh"    ;;
+	  -p|--preview ) shift; source "$ScriptsDir/preview.sh"   ;;
 	  -u|--upscale ) shift; source "$ScriptsDir/upscale.sh"   ;;
 	  -v|--video   ) shift; source "$ScriptsDir/video.sh"     ;;
 	  -m|--merge   ) shift; source "$ScriptsDir/merge.sh"     ;;
