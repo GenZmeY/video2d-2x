@@ -54,7 +54,7 @@ popd > /dev/null
 
 # Upscale (scale)
 if [[ "$ScaleRatio" -ne 1 ]]; then
-	echo "Scale"
+	echo "waifu2x scale"
 	waifu2x-caffe-cui \
 		--mode "scale" \
 		--scale_ratio "$ScaleRatio" \
@@ -69,7 +69,6 @@ if [[ "$ScaleRatio" -ne 1 ]]; then
 		--output_path "$TmpFramesOutDir" \
 	> /dev/null
 	
-	echo "Copy"
 	pushd "$TmpFramesOutDir" > /dev/null
 	while read Filename 
 	do
@@ -88,7 +87,7 @@ do
 		UpscaleMode="noise_scale"
 	fi
 
-	echo "$UpscaleMode $NoiseLevel"
+	echo "waifu2x $UpscaleMode $NoiseLevel"
 	waifu2x-caffe-cui \
 		--mode "$UpscaleMode" \
 		--scale_ratio "$ScaleRatio" \
@@ -104,7 +103,6 @@ do
 		--output_path "$TmpFramesOutDir" \
 	> /dev/null
 	
-	echo "Copy"
 	pushd "$TmpFramesOutDir" > /dev/null
 	while read Filename 
 	do
@@ -114,6 +112,8 @@ do
 	popd > /dev/null
 done
 
+echo "scale original"
+mogrify -scale $(echo "$ScaleRatio * 100" | bc)% "$TmpFramesSrcDir"/*.png
 pushd "$TmpFramesSrcDir" > /dev/null
 mv *.png "$PreviewDir"
 popd > /dev/null

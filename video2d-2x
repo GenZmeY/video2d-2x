@@ -38,6 +38,7 @@ function show_help ()
 	echo "    -e, --extract <FILE>  extract all resources from (video) FILE"
 	echo "    -f, --frames          convert extracted video to frames"
 	echo "    -r, --ranges          generate range list for frames"
+	echo "    -p, --preview         generate preview images for each range"
 	echo "    -u, --upscale         upscale frames with range settings"
 	echo "    -v, --video           generate upscaled video from upscaled frames"
 	echo "    -m, --merge           merge upscaled video with all extracted resources"
