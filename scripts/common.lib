@@ -41,6 +41,7 @@ readonly RangesList="$OutputDir/ranges.list"
 
 readonly DepsConf="$SettingsDir/deps.conf"
 readonly Waifu2xConf="$SettingsDir/waifu2x-caffe.conf"
+readonly PreviewConf="$SettingsDir/preview.conf"
 readonly FfmpegConf="$SettingsDir/ffmpeg.conf"
 readonly RangeGenConf="$SettingsDir/range-gen.conf"
 

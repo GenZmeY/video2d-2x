@@ -22,4 +22,8 @@
 
 source "$RangeGenConf"
 
-"$DepsDir/range-gen/range-gen.exe" -j "$Jobs" -n "$NoiseLevel" "$FramesDir" "$RangesList" "$Threshold"
+if [[ -n "$NoiseLevel" ]]; then
+	"$DepsDir/range-gen/range-gen.exe" -j "$Jobs" -n "$NoiseLevel" "$FramesDir" "$RangesList" "$Threshold"
+else
+	"$DepsDir/range-gen/range-gen.exe" -j "$Jobs" "$FramesDir" "$RangesList" "$Threshold"
+fi

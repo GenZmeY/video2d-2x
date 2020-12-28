@@ -16,6 +16,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 source "$Waifu2xConf"
+source "$PreviewConf"
 
 readonly TmpFramesSrcDir="${PreviewDir}_tmpsrc"
 readonly TmpFramesOutDir="${PreviewDir}_tmpout"
@@ -45,15 +46,26 @@ do
 	EndFrame=$(png_num ${RangeInfo[1]})
 	TargetFrame=$((StartFrame + (EndFrame - StartFrame)/2))
 	
-	CopyList+="$(printf "%06d" $TargetFrame).png "
+	CopyList+="$(printf "%06d" $TargetFrame).png " # faster than copying one by one
 done < <(cat "$RangesList"; echo) # make bash not skip the last line (if there is no empty line at the end)
 
 pushd "$FramesDir" > /dev/null
 cp -f $CopyList "$TmpFramesSrcDir"
 popd > /dev/null
 
+if echo "$UseRangeNumbers" | grep -qiF "True"; then
+	pushd "$TmpFramesSrcDir" > /dev/null
+	Index=0
+	while read File
+	do
+		((Index+=1))
+		mv "$File" "$(printf "%06d" $Index).png"
+	done < <(find "$TmpFramesSrcDir" -type f -name '*.png' -printf '%f\n')
+	popd > /dev/null
+fi
+
 # Upscale (scale)
-if [[ "$ScaleRatio" -ne 1 ]]; then
+if echo "$Waifu2xScalePreview" | grep -qiF "True" && [[ "$ScaleRatio" -ne 1 ]]; then
 	echo "waifu2x scale"
 	waifu2x-caffe-cui \
 		--mode "scale" \
@@ -79,7 +91,7 @@ if [[ "$ScaleRatio" -ne 1 ]]; then
 fi
 
 # Upscale (noise_scale)
-for NoiseLevel in 0 1 2 3
+for NoiseLevel in $Waifu2xNoiseScaleList
 do
 	if [[ "$ScaleRatio" -eq 1 ]]; then
 		UpscaleMode="noise"
@@ -112,10 +124,12 @@ do
 	popd > /dev/null
 done
 
-echo "scale original"
-mogrify -scale $(echo "$ScaleRatio * 100" | bc)% "$TmpFramesSrcDir"/*.png
-pushd "$TmpFramesSrcDir" > /dev/null
-mv *.png "$PreviewDir"
-popd > /dev/null
+if echo "$ResizePreivew" | grep -qiF "True"; then
+	echo "scale original"
+	mogrify -scale $(echo "$ScaleRatio * 100" | bc)% "$TmpFramesSrcDir"/*.png
+	pushd "$TmpFramesSrcDir" > /dev/null
+	mv *.png "$PreviewDir"
+	popd > /dev/null
+fi
 
 rm -rf "$TmpFramesSrcDir" "$TmpFramesOutDir"
